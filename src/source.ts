@@ -19,7 +19,7 @@ export function consume<T>(
     let isDone = false;
     let dispose: Dispose = () => {};
 
-    const emit: Emit<T> = (value) => {
+    const emit: Emit<T> = value => {
         if (isDone) return;
         // console.log("EMIT:", value);
         try {
@@ -39,7 +39,7 @@ export function consume<T>(
     };
 
     // you can call cleanup multiple times -- all previous cleanup functions will be called
-    const cleanup: Cleanup = (disposeFn) => {
+    const cleanup: Cleanup = disposeFn => {
         if (isDone) return;
         const prevDispose = dispose;
         dispose = () => {
@@ -71,15 +71,15 @@ export function collect<T>(source: Source<T>): Promise<T[]> {
         const values: T[] = [];
         consume(
             source,
-            (value) => values.push(value),
+            value => values.push(value),
             () => resolve(values),
-            (error) => reject(error)
+            error => reject(error)
         );
     });
 }
 
 export function toCallback<T>(signal: Signal<T>): Callback<T> {
-    return (value) => signal.dispatch(value);
+    return value => signal.dispatch(value);
 }
 
 export async function* toAsyncIterable<T>(source: Source<T>): AsyncGenerator<T> {
@@ -87,7 +87,7 @@ export async function* toAsyncIterable<T>(source: Source<T>): AsyncGenerator<T> 
     let next: (() => void) | null = null;
     let isDone = false;
 
-    const onEmit: Callback<T> = (value) => {
+    const onEmit: Callback<T> = value => {
         if (isDone) return;
         values.push(value);
         if (next) {
@@ -104,7 +104,7 @@ export async function* toAsyncIterable<T>(source: Source<T>): AsyncGenerator<T> 
         }
     };
 
-    const onError: Callback<any> = (error) => {
+    const onError: Callback<any> = error => {
         throw error;
     };
 
@@ -112,7 +112,7 @@ export async function* toAsyncIterable<T>(source: Source<T>): AsyncGenerator<T> 
 
     while (!isDone || values.length > 0) {
         if (values.length === 0 && !isDone) {
-            await new Promise<void>((resolve) => (next = resolve));
+            await new Promise<void>(resolve => (next = resolve));
         }
 
         if (values.length > 0) {
@@ -127,13 +127,13 @@ export function buffered<T>(source: Source<T>): Source<T> {
 
 export function map<T, U>(source: Source<T>, fn: (value: T) => U): Source<U> {
     return (emit, done, cleanup) => {
-        source((value) => emit(fn(value)), done, cleanup);
+        source(value => emit(fn(value)), done, cleanup);
     };
 }
 
 export function filter<T>(source: Source<T>, predicate: (value: T) => boolean): Source<T> {
     return (emit, done, cleanup) => {
-        source((value) => predicate(value) && emit(value), done, cleanup);
+        source(value => predicate(value) && emit(value), done, cleanup);
     };
 }
 
@@ -155,7 +155,7 @@ export function merge<T>(...sources: Source<T>[]): Source<T> {
         };
 
         const dispose: Abort = () => {
-            aborts.forEach((abort) => {
+            aborts.forEach(abort => {
                 try {
                     abort();
                 } catch (_e) {
@@ -169,7 +169,7 @@ export function merge<T>(...sources: Source<T>[]): Source<T> {
         cleanup(dispose);
 
         // Shared error handler
-        const onError: Callback<any> = (error) => {
+        const onError: Callback<any> = error => {
             if (isDone) return;
             isDone = true;
 

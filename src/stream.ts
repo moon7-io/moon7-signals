@@ -45,7 +45,7 @@ export class Stream<T> extends Signal<T> {
     }
 
     public disconnectAll(): void {
-        this.connections.forEach((abort) => abort());
+        this.connections.forEach(abort => abort());
         this.connections.clear();
     }
 
@@ -94,18 +94,18 @@ export class Stream<T> extends Signal<T> {
     }
 
     public pipe(target: Stream<T>): Stream<T> {
-        const remove = this.add((value) => target.dispatch(value));
+        const remove = this.add(value => target.dispatch(value));
         target.onClose.once(() => remove());
         return target;
     }
 
     public map<U>(fn: (value: T) => U): Stream<U> {
-        return Stream.of<U>((emit) => this.add((value) => emit(fn(value))));
+        return Stream.of<U>(emit => this.add(value => emit(fn(value))));
     }
 
     public filter(predicate: (value: T) => boolean): Stream<T> {
-        return Stream.of<T>((emit) => {
-            return this.add((value) => {
+        return Stream.of<T>(emit => {
+            return this.add(value => {
                 if (predicate(value)) {
                     emit(value);
                 }
@@ -116,7 +116,7 @@ export class Stream<T> extends Signal<T> {
     public take(count: number): Stream<T> {
         return Stream.of<T>((emit, done) => {
             let remaining = count;
-            return this.add((value) => {
+            return this.add(value => {
                 emit(value);
                 if (--remaining <= 0) done();
             });
@@ -124,9 +124,9 @@ export class Stream<T> extends Signal<T> {
     }
 
     public skip(count: number): Stream<T> {
-        return Stream.of<T>((emit) => {
+        return Stream.of<T>(emit => {
             let skipped = 0;
-            return this.add((value) => {
+            return this.add(value => {
                 if (skipped++ < count) return;
                 emit(value);
             });

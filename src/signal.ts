@@ -43,7 +43,7 @@ export class Signal<T> {
 
     /** Returns a Promise that resolves with the next dispatched value */
     public next(): Promise<T> {
-        return new Promise<T>((pass) => this.once(pass));
+        return new Promise<T>(pass => this.once(pass));
     }
 
     /** Removes all registered listeners */

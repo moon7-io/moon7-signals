@@ -79,7 +79,7 @@ export class SignalHub<S> implements EventEmitter<S> {
 
     /** Clears all listeners for all keys */
     public clearAll(): void {
-        this.map.forEach((signal) => signal.clear());
+        this.map.forEach(signal => signal.clear());
     }
 
     /** Dispatches a value for a specific key */

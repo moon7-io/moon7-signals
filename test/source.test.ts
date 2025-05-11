@@ -19,22 +19,22 @@ describe("Source", () => {
         };
 
         const values: number[] = [];
-        consume(source, (value) => values.push(value));
+        consume(source, value => values.push(value));
         expect(values).toEqual([1, 2, 3, 4, 5, 6]);
         expect(dispose).toHaveBeenCalledTimes(1);
 
         values.length = 0;
         consume(
-            map(source, (x) => x * 2),
-            (value) => values.push(value)
+            map(source, x => x * 2),
+            value => values.push(value)
         );
         expect(values).toEqual([2, 4, 6, 8, 10, 12]);
         expect(dispose).toHaveBeenCalledTimes(2);
 
         values.length = 0;
         consume(
-            filter(source, (x) => x % 2 === 0),
-            (value) => values.push(value)
+            filter(source, x => x % 2 === 0),
+            value => values.push(value)
         );
         expect(values).toEqual([2, 4, 6]);
         expect(dispose).toHaveBeenCalledTimes(3);
@@ -56,12 +56,12 @@ describe("Source", () => {
 
             function clear() {
                 dispose();
-                timers.forEach((timer) => clearTimeout(timer));
+                timers.forEach(timer => clearTimeout(timer));
             }
         };
 
         const values: number[] = [];
-        await new Promise((resolve) => consume(source, (value) => values.push(value), resolve));
+        await new Promise(resolve => consume(source, value => values.push(value), resolve));
         expect(values).toEqual([1, 2, 3, 4, 5, 6]);
         expect(dispose).toHaveBeenCalledTimes(1);
     });
@@ -82,7 +82,7 @@ describe("Source", () => {
 
             function clear() {
                 dispose();
-                timers.forEach((timer) => clearTimeout(timer));
+                timers.forEach(timer => clearTimeout(timer));
             }
         };
 
@@ -90,7 +90,7 @@ describe("Source", () => {
         const promise = new Promise((resolve, reject) =>
             consume(
                 source,
-                (value) => {
+                value => {
                     if (value === 3) throw new Error("Test error");
                     values.push(value);
                 },
@@ -120,14 +120,14 @@ describe("Source", () => {
 
             function clear() {
                 dispose();
-                timers.forEach((timer) => clearTimeout(timer));
+                timers.forEach(timer => clearTimeout(timer));
             }
         };
 
         const values: number[] = [];
         let abort: Abort;
         const promise = new Promise((resolve, reject) => {
-            abort = consume(source, (value) => values.push(value), resolve, reject);
+            abort = consume(source, value => values.push(value), resolve, reject);
         });
 
         await sleep(25);
@@ -153,7 +153,7 @@ describe("Source", () => {
 
             function clear() {
                 dispose();
-                timers.forEach((timer) => clearTimeout(timer));
+                timers.forEach(timer => clearTimeout(timer));
             }
         };
 
@@ -162,12 +162,12 @@ describe("Source", () => {
         expect(dispose).toHaveBeenCalledTimes(1);
 
         dispose.mockClear();
-        const p2 = collect(map(source, (x) => x * 2));
+        const p2 = collect(map(source, x => x * 2));
         await expect(p2).resolves.toEqual([2, 4, 6, 8, 10, 12]);
         expect(dispose).toHaveBeenCalledTimes(1);
 
         dispose.mockClear();
-        const p3 = collect(filter(source, (x) => x % 2 === 0));
+        const p3 = collect(filter(source, x => x % 2 === 0));
         await expect(p3).resolves.toEqual([2, 4, 6]);
         expect(dispose).toHaveBeenCalledTimes(1);
     });
@@ -197,11 +197,11 @@ describe("Source", () => {
         expect(v1).toEqual([1, 2, 3, 4, 5, 6]);
         expect(dispose).toHaveBeenCalledTimes(1);
 
-        const v2 = await collect(map(source, (x) => x * 2));
+        const v2 = await collect(map(source, x => x * 2));
         expect(v2).toEqual([2, 4, 6, 8, 10, 12]);
         expect(dispose).toHaveBeenCalledTimes(2);
 
-        const v3 = await collect(filter(source, (x) => x % 2 === 0));
+        const v3 = await collect(filter(source, x => x % 2 === 0));
         expect(v3).toEqual([2, 4, 6]);
         expect(dispose).toHaveBeenCalledTimes(3);
     });
@@ -223,7 +223,7 @@ describe("Source", () => {
         const onEmit = new Signal<number>();
         let values: number[] = [];
 
-        onEmit.add((value) => values.push(value));
+        onEmit.add(value => values.push(value));
 
         values = [];
         consume(source, toCallback(onEmit));
@@ -232,7 +232,7 @@ describe("Source", () => {
 
         values = [];
         consume(
-            map(source, (x) => x * 2),
+            map(source, x => x * 2),
             toCallback(onEmit)
         );
         expect(values).toEqual([2, 4, 6, 8, 10, 12]);
@@ -240,7 +240,7 @@ describe("Source", () => {
 
         values = [];
         consume(
-            filter(source, (x) => x % 2 === 0),
+            filter(source, x => x % 2 === 0),
             toCallback(onEmit)
         );
         expect(values).toEqual([2, 4, 6]);
@@ -381,7 +381,7 @@ describe("Source", () => {
         // Consume the mapped source
         consume(
             mappedSource,
-            (value) => values.push(value),
+            value => values.push(value),
             () => {},
             onError
         );
@@ -415,7 +415,7 @@ describe("Source", () => {
         // Consume the filtered source
         consume(
             filteredSource,
-            (value) => values.push(value),
+            value => values.push(value),
             () => {},
             onError
         );
@@ -443,7 +443,7 @@ describe("Source", () => {
     });
 
     test("toAsyncIterable handles abort", async () => {
-        const source: Source<number> = (emit) => {
+        const source: Source<number> = emit => {
             emit(1);
             // We don't call done() to test the abort case
         };
@@ -685,7 +685,7 @@ describe("Source", () => {
         };
 
         // Consume the source
-        consume(source, (value) => emitValues.push(value));
+        consume(source, value => emitValues.push(value));
 
         // Only the values emitted before done should be received
         expect(emitValues).toEqual([1, 2]);
@@ -1064,7 +1064,7 @@ describe("Source", () => {
 
         let abort: Abort;
         const promise = new Promise((resolve, reject) => {
-            abort = consume(mergedSource, (value) => values.push(value), resolve, reject);
+            abort = consume(mergedSource, value => values.push(value), resolve, reject);
         });
 
         // Abort after receiving some values

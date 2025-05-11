@@ -27,7 +27,7 @@ describe("Stream", () => {
 
         const values: number[] = [];
         const stream = new Stream<number>();
-        stream.add((value) => values.push(value));
+        stream.add(value => values.push(value));
         stream.connect(source);
 
         await stream.onClose.next();
@@ -58,7 +58,7 @@ describe("Stream", () => {
 
         const values: number[] = [];
         const stream = new Stream<number>();
-        stream.add((value) => values.push(value));
+        stream.add(value => values.push(value));
         stream.connect(source);
 
         await sleep(25);
@@ -98,7 +98,7 @@ describe("Stream", () => {
         expect(stream.isOpen).toBe(true);
 
         // Create a promise that resolves when onClose is dispatched
-        const closedPromise = new Promise<void>((resolve) => {
+        const closedPromise = new Promise<void>(resolve => {
             stream.onClose.once(() => resolve());
         });
 
@@ -281,7 +281,7 @@ describe("Stream", () => {
         sourceStream.pipe(targetStream);
 
         const values: number[] = [];
-        targetStream.add((value) => values.push(value));
+        targetStream.add(value => values.push(value));
 
         // Emit values to the source stream
         sourceStream.dispatch(1);
@@ -300,10 +300,10 @@ describe("Stream", () => {
 
     test("map method", async () => {
         const stream = new Stream<number>();
-        const mappedStream = stream.map((x) => x * 2);
+        const mappedStream = stream.map(x => x * 2);
 
         const values: number[] = [];
-        mappedStream.add((value) => values.push(value));
+        mappedStream.add(value => values.push(value));
 
         // Emit values to the original stream
         stream.dispatch(1);
@@ -315,10 +315,10 @@ describe("Stream", () => {
 
     test("filter method", async () => {
         const stream = new Stream<number>();
-        const filteredStream = stream.filter((x) => x % 2 === 0);
+        const filteredStream = stream.filter(x => x % 2 === 0);
 
         const values: number[] = [];
-        filteredStream.add((value) => values.push(value));
+        filteredStream.add(value => values.push(value));
 
         // Emit values to the original stream
         stream.dispatch(1);
@@ -334,9 +334,9 @@ describe("Stream", () => {
         const takenStream = stream.take(2);
 
         const values: number[] = [];
-        takenStream.add((value) => values.push(value));
+        takenStream.add(value => values.push(value));
 
-        const donePromise = new Promise<void>((resolve) => {
+        const donePromise = new Promise<void>(resolve => {
             takenStream.onDone.once(() => resolve());
         });
 
@@ -359,7 +359,7 @@ describe("Stream", () => {
         const skippedStream = stream.skip(2);
 
         const values: number[] = [];
-        skippedStream.add((value) => values.push(value));
+        skippedStream.add(value => values.push(value));
 
         // Emit values to the original stream
         stream.dispatch(1); // skipped
@@ -372,7 +372,7 @@ describe("Stream", () => {
 
     test("trying to connect already connected source", () => {
         const stream = new Stream<number>();
-        const source: Source<number> = (emit) => {
+        const source: Source<number> = emit => {
             emit(1);
         };
 
@@ -385,7 +385,7 @@ describe("Stream", () => {
 
     test("disconnect method returns false for unknown source", () => {
         const stream = new Stream<number>();
-        const source: Source<number> = (emit) => {
+        const source: Source<number> = emit => {
             emit(1);
         };
 
@@ -398,10 +398,10 @@ describe("Stream", () => {
         const stream = new Stream<number>();
 
         // Create real sources and connect them
-        const source1: Source<number> = (emit) => {
+        const source1: Source<number> = emit => {
             emit(1);
         };
-        const source2: Source<number> = (emit) => {
+        const source2: Source<number> = emit => {
             emit(2);
         };
 
@@ -430,7 +430,7 @@ describe("Stream", () => {
         };
 
         // Set up a promise that resolves when the stream closes
-        const closePromise = new Promise<void>((resolve) => {
+        const closePromise = new Promise<void>(resolve => {
             stream.onClose.once(() => resolve());
         });
 
@@ -448,12 +448,12 @@ describe("Stream", () => {
         const stream = new Stream<number>();
 
         // Create our sources
-        const source1: Source<number> = (emit) => {
+        const source1: Source<number> = emit => {
             emit(1);
             // This source never calls done
         };
 
-        const source2: Source<number> = (emit) => {
+        const source2: Source<number> = emit => {
             emit(2);
             // This source never calls done
         };

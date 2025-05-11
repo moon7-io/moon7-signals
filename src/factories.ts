@@ -15,10 +15,10 @@ import { Stream } from "~/stream";
 /** Creates a source that emits values from one or more signals */
 export function signalSource<T>(...signals: Signal<T>[]): Source<T> {
     return (emit, done, cleanup) => {
-        const removers: Remove[] = signals.map((signal) => {
-            return signal.add((value) => emit(value));
+        const removers: Remove[] = signals.map(signal => {
+            return signal.add(value => emit(value));
         });
-        cleanup(() => removers.forEach((close) => close()));
+        cleanup(() => removers.forEach(close => close()));
     };
 }
 
@@ -32,7 +32,7 @@ export function emitterSource<S>(emitter: Emitter<S>) {
     // structured this way for better type inference
     return <K extends keyof S>(eventName: K): Source<S[K]> => {
         return (emit, done, cleanup) => {
-            const listener: EventHandler<S[K]> = (value) => emit(value);
+            const listener: EventHandler<S[K]> = value => emit(value);
             if (isEventEmitter(emitter)) {
                 emitter.on(eventName, listener);
                 cleanup(() => emitter.off(eventName, listener));
@@ -55,7 +55,7 @@ export function eventTargetSource<S>(target: EventTarget<S>) {
     // structured this way for better type inference
     return <K extends keyof S>(eventName: K, options?: AddEventListenerOptions | boolean): Source<S[K]> => {
         return (emit, done, cleanup) => {
-            const listener: EventHandler<S[K]> = (event) => emit(event);
+            const listener: EventHandler<S[K]> = event => emit(event);
             target.addEventListener(eventName, listener, options);
             cleanup(() => target.removeEventListener(eventName, listener, options));
         };

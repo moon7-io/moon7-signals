@@ -17,7 +17,7 @@ describe("Bufferedd", () => {
 
         // This listener is added too late and won't receive the values
         const values: number[] = [];
-        stream.add((value) => values.push(value));
+        stream.add(value => values.push(value));
         expect(values).toEqual([]);
     });
 
@@ -27,7 +27,7 @@ describe("Bufferedd", () => {
 
         // This listener is added too late and won't receive the values
         const values: number[] = [];
-        stream.add((value) => values.push(value));
+        stream.add(value => values.push(value));
         stream.connect(numberSource);
         expect(values).toEqual([0, 1, 2, 3, 4]);
     });
@@ -46,7 +46,7 @@ describe("Bufferedd", () => {
         const source = asyncIterableSource(toAsyncIterable<number>(numberSource));
 
         const values: number[] = [];
-        consume(source, (value) => values.push(value));
+        consume(source, value => values.push(value));
         expect(values).toEqual([0, 1, 2, 3, 4]);
     });
 });

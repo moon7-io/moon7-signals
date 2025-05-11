@@ -26,7 +26,7 @@ describe("Source functions", () => {
             const stream = Stream.of(signalSource(signal1, signal2));
             const receivedValues: number[] = [];
 
-            stream.add((value) => receivedValues.push(value));
+            stream.add(value => receivedValues.push(value));
 
             signal1.dispatch(1);
             signal2.dispatch(2);
@@ -54,7 +54,7 @@ describe("Source functions", () => {
             stream.connect(signalSource(signal2));
 
             const receivedValues: number[] = [];
-            stream.add((value) => receivedValues.push(value));
+            stream.add(value => receivedValues.push(value));
 
             signal1.dispatch(1);
             signal2.dispatch(2);
@@ -72,7 +72,7 @@ describe("Source functions", () => {
             expect(value).toBe(42);
 
             // Stream should be closed after promise resolves
-            await new Promise((resolve) => setTimeout(resolve, 0)); // Wait for microtasks
+            await new Promise(resolve => setTimeout(resolve, 0)); // Wait for microtasks
             expect(stream.isOpen).toBe(false);
         });
 
@@ -110,7 +110,7 @@ describe("Source functions", () => {
                 off: vi.fn(),
                 emit: vi.fn().mockImplementation((event, ...args) => {
                     // Find handlers for this event and call them
-                    const handler = emitter.on.mock.calls.find((call) => call[0] === event)?.[1];
+                    const handler = emitter.on.mock.calls.find(call => call[0] === event)?.[1];
                     if (handler) handler(args[0]);
                 }),
             };
@@ -118,7 +118,7 @@ describe("Source functions", () => {
             const stream = Stream.of(emitterSource<SomeEmitter>(emitter)("data"));
 
             const receivedValues: string[] = [];
-            stream.add((value) => receivedValues.push(value));
+            stream.add(value => receivedValues.push(value));
 
             emitter.emit("data", "first");
             emitter.emit("data", "second");
@@ -133,7 +133,7 @@ describe("Source functions", () => {
                 off: vi.fn(),
                 emit: vi.fn().mockImplementation((event, ...args) => {
                     // Find handlers for this event and call them
-                    const handler = emitter.on.mock.calls.find((call) => call[0] === event)?.[1];
+                    const handler = emitter.on.mock.calls.find(call => call[0] === event)?.[1];
                     if (handler) handler(args[0]);
                 }),
             };
@@ -141,7 +141,7 @@ describe("Source functions", () => {
             const stream = Stream.of(emitterSource<SomeEmitter>(emitter)("data"));
 
             const receivedValues: string[] = [];
-            stream.add((value) => receivedValues.push(value));
+            stream.add(value => receivedValues.push(value));
 
             emitter.emit("data", "first");
             stream.close();
@@ -157,7 +157,7 @@ describe("Source functions", () => {
                 removeEventListener: vi.fn(),
                 emit: vi.fn().mockImplementation((event, listener) => {
                     // Find handlers for this event and call them
-                    const handler = target.addEventListener.mock.calls.find((call) => call[0] === event)?.[1];
+                    const handler = target.addEventListener.mock.calls.find(call => call[0] === event)?.[1];
                     if (handler) handler(listener);
                 }),
             };
@@ -168,7 +168,7 @@ describe("Source functions", () => {
             expect(target.addEventListener).toHaveBeenCalledWith("click", expect.any(Function));
 
             const receivedValues: any[] = [];
-            stream.add((value) => receivedValues.push(value));
+            stream.add(value => receivedValues.push(value));
 
             target.emit("click", { type: "click" });
             expect(receivedValues).toEqual([{ type: "click" }]);
@@ -185,7 +185,7 @@ describe("Source functions", () => {
                 removeListener: vi.fn(),
                 dispatch: vi.fn().mockImplementation((event, data) => {
                     // Find handlers for this event and call them
-                    const handler = nodeEmitter.addListener.mock.calls.find((call) => call[0] === event)?.[1];
+                    const handler = nodeEmitter.addListener.mock.calls.find(call => call[0] === event)?.[1];
                     if (handler) handler(data);
                 }),
             };
@@ -196,7 +196,7 @@ describe("Source functions", () => {
             expect(nodeEmitter.addListener).toHaveBeenCalledWith("data", expect.any(Function));
 
             const receivedValues: string[] = [];
-            stream.add((value) => receivedValues.push(value));
+            stream.add(value => receivedValues.push(value));
 
             nodeEmitter.dispatch("data", "test data");
             expect(receivedValues).toEqual(["test data"]);
@@ -283,7 +283,7 @@ describe("Source functions", () => {
             })();
 
             // Give the async generator time to complete
-            await new Promise((resolve) => setTimeout(resolve, 50));
+            await new Promise(resolve => setTimeout(resolve, 50));
 
             // Wait for the collection to complete
             await collectionPromise;
@@ -303,7 +303,7 @@ describe("Source functions", () => {
             const stream = Stream.of(asyncIterableSource(asyncGenerator()));
 
             let latest = 0;
-            stream.add((value) => (latest = value));
+            stream.add(value => (latest = value));
 
             await expect(stream.next()).resolves.toBe(0);
             await expect(stream.next()).resolves.toBe(1);
@@ -340,7 +340,7 @@ describe("Source functions", () => {
             const stream = Stream.of(throttledIterableSource(iterable, delay));
             const receivedValues: number[] = [];
 
-            stream.add((value) => receivedValues.push(value));
+            stream.add(value => receivedValues.push(value));
 
             // Before any delay, no values should be emitted
             expect(receivedValues).toEqual([]);
@@ -378,7 +378,7 @@ describe("Source functions", () => {
             const stream = Stream.of(throttledIterableSource(iterable, 100));
 
             const receivedValues: number[] = [];
-            stream.add((value) => receivedValues.push(value));
+            stream.add(value => receivedValues.push(value));
 
             // Wait for first delay and first value
             await vi.advanceTimersByTimeAsync(100);
@@ -427,7 +427,7 @@ describe("Source functions", () => {
             const combinedStream = Stream.of(streamSource(stream1, stream2));
             const receivedValues: number[] = [];
 
-            combinedStream.add((value) => receivedValues.push(value));
+            combinedStream.add(value => receivedValues.push(value));
 
             stream1.dispatch(1);
             stream2.dispatch(2);
