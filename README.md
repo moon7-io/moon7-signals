@@ -213,9 +213,9 @@ hub.dispatch("notify", { message: "Hello world", type: "info" });
 hub.dispatch("ready");  // No payload needed for void events
 ```
 
-## Sources
+## Source Factory Functions
 
-The library provides source factory functions to create streams from various data sources:
+The library provides a number of source factory functions for convenience, allowing you to create streams from various data sources, such as from DOM EventTargets, or other EventEmitters.
 
 ```typescript
 import { 
@@ -237,7 +237,7 @@ const combinedStream = Stream.of(signalSource(signal1, signal2));
 const responseStream = Stream.of(promiseSource(Promise.resolve("hello")));
 
 // Create a stream from DOM events
-const button = document.getElementById('button');
+const button = document.getElementById("button");
 const clickStream = Stream.of(eventTargetSource(button)("click"));
 
 // Create a stream from an async iterable
@@ -259,9 +259,71 @@ multiSourceStream.connect(signalSource(signal1));
 multiSourceStream.connect(asyncIterableSource(generateData()));
 ```
 
-## Stream Operations
+You can choose to use a Source with a Stream, or directly using one of the source functions.
 
-Streams support a rich set of functional operations that let you transform, filter, and combine data:
+```typescript
+import { sleep } from "@moon7/async";
+import { Source, Stream, Signal, consume, toCallback, Done, Emit } from "@moon7/signals";
+
+// define a source
+const mySource: Source<number> = async (emit, done) => {
+    for (let i = 0; i < 10; i++) {
+        await sleep(1000);
+        emit(i);
+    }
+    done();
+};
+
+// connect a stream to a source immediately
+const stream1 = Stream.of(mySource);
+
+// alternatively, connect a stream to a source later
+const stream2 = new Stream<number>();
+stream2.add(value => console.log(value));
+stream2.connect(mySource);
+
+// or use the lower-level functions for more control
+const onEmit: Emit<number> = value => console.log(value);
+const onDone: Done = () => console.log("completed");
+const abort = consume(mySource, onEmit, onDone);
+
+// or attach it to a pre-existing Signal
+const signal = new Signal<number>();
+signal.add(value => console.log(value));
+const onDone: Done = () => console.log("completed");
+const abort = consume(mySource, toCallback(signal), onDone);
+```
+
+## Source and Stream Operations
+
+Sources and Streams support a rich set of functional operations that let you transform, filter, and combine data.
+
+### Source Operations
+
+```typescript
+import { sleep } from "@moon7/async";
+import { Source, map, filter } from "@moon7/signals";
+
+// define a source
+const mySource: Source<number> = async (emit, done) => {
+    for (let i = 0; i < 10; i++) {
+        await sleep(1000);
+        emit(i);
+    }
+    done();
+};
+
+// create a source from the input source, where emitted values are doubled
+const mappedSource = map(mySource, value => value * 2);
+
+// create a source from the input source, where only certain values are emitted
+const filteredSource = filter(mySource, value => value % 2 === 0);
+
+// merge multiple sources into a single source
+const mergedSource = merge(mappedSource, mySource, filteredSource);
+```
+
+### Stream Operations
 
 ```typescript
 // Source stream of numbers
@@ -309,6 +371,86 @@ async function processStream() {
 }
 ```
 
+### Websocket Example
+
+```typescript
+import { Source, Stream } from '@moon7/signals';
+import { WebSocket, WebSocketServer } from 'ws';
+import express from 'express';
+import http from 'http';
+
+// Create a source factory function for WebSockets
+const websocketSource = (ws: WebSocket): Source<any> => (emit, done, cleanup) => {
+    const onMessage = (data: any) => {
+        try {
+            const message = JSON.parse(data.toString());
+            emit(message);
+        } catch (error) {
+            emit({ error: 'Failed to parse message', raw: data.toString() });
+        }
+    };
+
+    const onClose = () => {
+        done();
+    };
+
+    const onError = () => {
+        emit({ error: error.message });
+        done();
+    };
+
+    // Set up event handlers
+    ws.on('message', onMessage);
+    ws.on('close', onClose);
+    ws.on('error', onError);
+
+    // Cleanup function to remove event listeners
+    cleanup(() => {
+        ws.off('message', onMessage);
+        ws.off('close', onClose);
+        ws.off('error', onError);
+    });
+};
+
+// Express server with WebSocket example
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
+
+// Handle WebSocket connections
+wss.on('connection', async (ws) => {
+    console.log('Client connected');
+    
+    // Create a stream from the WebSocket
+    const stream = Stream.of(websocketSource(ws));
+    
+    // Send a welcome message
+    ws.send(JSON.stringify({ type: 'welcome', message: 'Connected to server' }));
+    
+    try {
+        // Process messages using async/await
+        for await (const message of stream) {
+            console.log('Received message:', message);
+            
+            // Example: Echo back messages with a timestamp
+            if (message.type === 'chat') {
+                ws.send(JSON.stringify({
+                    type: 'chat',
+                    text: message.text,
+                    echo: true,
+                    timestamp: Date.now()
+                }));
+            }
+        }
+        
+        // The for-await loop exits when the WebSocket closes
+        console.log('Client disconnected gracefully');
+    } catch (error) {
+        console.error('Error processing WebSocket stream:', error);
+    }
+});
+```
+
 ## Error Handling
 
 ```typescript
@@ -346,12 +488,12 @@ stream.onError.add(error => {
 
 - `consume(source, onEmit, onDone, onError)` - Consumes a source, calling the provided callbacks
 - `collect(source)` - Collects all values from a source into an array Promise
-- `toAsyncIterable(source)` - Converts a source to an async iterable
-- `buffered(source)` - Creates a buffered version of a source that stores emitted values
 - `map(source, fn)` - Transforms values from a source using a mapping function
 - `filter(source, predicate)` - Filters values from a source based on a predicate
+- `merge(...sources)` - Merge multiple sources into a single source
+- `buffered(source)` - Creates a buffered version of a source that stores emitted values
+- `toAsyncIterable(source)` - Converts a source to an async iterable
 - `toCallback(signal)` - Converts a signal to a callback function
-- `stream(source, onEmit, onDone, onError)` - Low-level function to connect a source to signals
 
 ### Stream
 
