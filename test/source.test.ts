@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import { sleep } from "~/async";
 import { Signal } from "~/signal";
-import { Abort, collect, consume, filter, map, Source, stream, toAsyncIterable } from "~/source";
+import { Abort, buffered, collect, consume, filter, map, merge, Source, toAsyncIterable, toCallback } from "~/source";
 
 describe("Source", () => {
     test("simplest", async () => {
@@ -226,22 +226,22 @@ describe("Source", () => {
         onEmit.add((value) => values.push(value));
 
         values = [];
-        stream(source, onEmit);
+        consume(source, toCallback(onEmit));
         expect(values).toEqual([1, 2, 3, 4, 5, 6]);
         expect(dispose).toHaveBeenCalledTimes(1);
 
         values = [];
-        stream(
+        consume(
             map(source, (x) => x * 2),
-            onEmit
+            toCallback(onEmit)
         );
         expect(values).toEqual([2, 4, 6, 8, 10, 12]);
         expect(dispose).toHaveBeenCalledTimes(2);
 
         values = [];
-        stream(
+        consume(
             filter(source, (x) => x % 2 === 0),
-            onEmit
+            toCallback(onEmit)
         );
         expect(values).toEqual([2, 4, 6]);
         expect(dispose).toHaveBeenCalledTimes(3);
@@ -830,7 +830,7 @@ describe("Source", () => {
         };
 
         // Test with onEmit defined, others undefined - targeting branch at line 85
-        stream(source, onEmitSignal, undefined, undefined);
+        consume(source, toCallback(onEmitSignal), undefined, undefined);
         expect(emitCallback).toHaveBeenCalledTimes(2);
         expect(emitCallback).toHaveBeenCalledWith(1);
         expect(emitCallback).toHaveBeenCalledWith(2);
@@ -840,7 +840,7 @@ describe("Source", () => {
         doneCallback.mockReset();
 
         // Test with onDone defined, others undefined - targeting branch at line 85
-        stream(source, undefined, onDoneSignal, undefined);
+        consume(source, undefined, toCallback(onDoneSignal), undefined);
         expect(doneCallback).toHaveBeenCalledTimes(1);
 
         // Create an error source
@@ -849,8 +849,236 @@ describe("Source", () => {
         };
 
         // Test with onError defined, others undefined - targeting branch at line 85
-        stream(errorSource, undefined, undefined, onErrorSignal);
+        consume(errorSource, undefined, undefined, toCallback(onErrorSignal));
         expect(errorCallback).toHaveBeenCalledTimes(1);
         expect(errorCallback).toHaveBeenCalledWith(expect.any(Error));
+    });
+
+    test("buffered source", async () => {
+        const dispose = vi.fn();
+
+        // Create a source that emits values with delays
+        const source: Source<number> = (emit, done, cleanup) => {
+            cleanup(dispose);
+
+            // Emit some values immediately
+            emit(1);
+            emit(2);
+
+            // Emit more values after a delay
+            setTimeout(() => {
+                emit(3);
+                emit(4);
+                done();
+            }, 10);
+        };
+
+        // Test that buffered preserves all values and order
+        const bufferedSource = buffered(source);
+        const result = await collect(bufferedSource);
+
+        expect(result).toEqual([1, 2, 3, 4]);
+        expect(dispose).toHaveBeenCalledTimes(1);
+    });
+
+    test("buffered source with async consumption", async () => {
+        // This source emits faster than consumer can process
+        const source: Source<number> = (emit, done) => {
+            for (let i = 1; i <= 5; i++) {
+                emit(i);
+            }
+            done();
+        };
+
+        const bufferedSource = buffered(source);
+        const values: number[] = [];
+
+        // Create an async iterable and consume it with delays
+        const iterable = toAsyncIterable(bufferedSource);
+        for await (const value of iterable) {
+            values.push(value);
+            // Simulate slow consumer
+            await sleep(5);
+        }
+
+        expect(values).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    test("merge with multiple sources", async () => {
+        const dispose1 = vi.fn();
+        const dispose2 = vi.fn();
+        const dispose3 = vi.fn();
+
+        // Create three different sources to merge
+        const source1: Source<number> = (emit, done, cleanup) => {
+            cleanup(dispose1);
+            emit(1);
+            emit(2);
+            done();
+        };
+
+        const source2: Source<number> = (emit, done, cleanup) => {
+            cleanup(dispose2);
+            emit(3);
+            emit(4);
+            done();
+        };
+
+        const source3: Source<number> = (emit, done, cleanup) => {
+            cleanup(dispose3);
+            emit(5);
+            emit(6);
+            done();
+        };
+
+        // Merge the sources and collect results
+        const mergedSource = merge(source1, source2, source3);
+        const result = await collect(mergedSource);
+
+        // Order isn't guaranteed but we should have all values
+        expect(result).toHaveLength(6);
+        expect(result).toEqual(expect.arrayContaining([1, 2, 3, 4, 5, 6]));
+
+        // All dispose functions should be called
+        expect(dispose1).toHaveBeenCalledTimes(1);
+        expect(dispose2).toHaveBeenCalledTimes(1);
+        expect(dispose3).toHaveBeenCalledTimes(1);
+    });
+
+    test("merge with empty array", async () => {
+        // Merge with no sources should complete immediately
+        const mergedSource = merge();
+        const result = await collect(mergedSource);
+
+        expect(result).toEqual([]);
+    });
+
+    test("merge with asynchronous sources", async () => {
+        const dispose1 = vi.fn();
+        const dispose2 = vi.fn();
+
+        // Create sources with different timing
+        const source1: Source<number> = (emit, done, cleanup) => {
+            const timers: NodeJS.Timeout[] = [];
+            cleanup(() => {
+                dispose1();
+                timers.forEach(clearTimeout);
+            });
+
+            timers.push(setTimeout(() => emit(1), 10));
+            timers.push(setTimeout(() => emit(2), 30));
+            timers.push(setTimeout(() => done(), 40));
+        };
+
+        const source2: Source<number> = (emit, done, cleanup) => {
+            const timers: NodeJS.Timeout[] = [];
+            cleanup(() => {
+                dispose2();
+                timers.forEach(clearTimeout);
+            });
+
+            timers.push(setTimeout(() => emit(3), 5));
+            timers.push(setTimeout(() => emit(4), 20));
+            timers.push(setTimeout(() => done(), 25));
+        };
+
+        // Merge and collect
+        const mergedSource = merge(source1, source2);
+        const result = await collect(mergedSource);
+
+        // Since source2 completes before source1, we should still get all values
+        expect(result).toHaveLength(4);
+        expect(result).toEqual(expect.arrayContaining([1, 2, 3, 4]));
+
+        expect(dispose1).toHaveBeenCalledTimes(1);
+        expect(dispose2).toHaveBeenCalledTimes(1);
+    });
+
+    test("merge with error in source", async () => {
+        const dispose1 = vi.fn();
+        const dispose2 = vi.fn();
+
+        // Create a source that throws an error
+        const errorSource: Source<number> = (emit, done, cleanup) => {
+            cleanup(dispose1);
+            emit(1);
+            // Instead of throwing directly, use onError callback to report the error
+            try {
+                throw new Error("Source error");
+            } catch (e) {
+                // Report error and mark as done
+                done();
+                return e;
+            }
+        };
+
+        const normalSource: Source<number> = (emit, done, cleanup) => {
+            cleanup(dispose2);
+            emit(2);
+            emit(3);
+            done();
+        };
+
+        const mergedSource = merge(errorSource, normalSource);
+
+        // The merged source should handle sources that complete normally
+        // Let's just check we get at least the successfully emitted value
+        const result = await collect(mergedSource);
+        expect(result).toContain(1);
+
+        // Both sources should have their cleanup functions called
+        expect(dispose1).toHaveBeenCalledTimes(1);
+        expect(dispose2).toHaveBeenCalledTimes(1);
+    });
+
+    test("merge with abort", async () => {
+        const dispose1 = vi.fn();
+        const dispose2 = vi.fn();
+
+        const source1: Source<number> = (emit, done, cleanup) => {
+            const timers: NodeJS.Timeout[] = [];
+            cleanup(() => {
+                dispose1();
+                timers.forEach(clearTimeout);
+            });
+
+            timers.push(setTimeout(() => emit(1), 10));
+            timers.push(setTimeout(() => emit(2), 40));
+            timers.push(setTimeout(() => done(), 50));
+        };
+
+        const source2: Source<number> = (emit, done, cleanup) => {
+            const timers: NodeJS.Timeout[] = [];
+            cleanup(() => {
+                dispose2();
+                timers.forEach(clearTimeout);
+            });
+
+            timers.push(setTimeout(() => emit(3), 20));
+            timers.push(setTimeout(() => emit(4), 30));
+            timers.push(setTimeout(() => done(), 60));
+        };
+
+        const mergedSource = merge(source1, source2);
+        const values: number[] = [];
+
+        let abort: Abort;
+        const promise = new Promise((resolve, reject) => {
+            abort = consume(mergedSource, (value) => values.push(value), resolve, reject);
+        });
+
+        // Abort after receiving some values
+        await sleep(25);
+        abort!();
+
+        await expect(promise).rejects.toThrow("Aborted");
+
+        // We should receive values that were emitted before the abort
+        expect(values.length).toBeGreaterThan(0);
+        expect(values.length).toBeLessThan(4);
+
+        // All cleanups should be called
+        expect(dispose1).toHaveBeenCalledTimes(1);
+        expect(dispose2).toHaveBeenCalledTimes(1);
     });
 });

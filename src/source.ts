@@ -82,10 +82,6 @@ export function toCallback<T>(signal: Signal<T>): Callback<T> {
     return (value) => signal.dispatch(value);
 }
 
-export function stream<T>(source: Source<T>, onEmit?: Signal<T>, onDone?: Signal<void>, onError?: Signal<any>): Abort {
-    return consume(source, onEmit && toCallback(onEmit), onDone && toCallback(onDone), onError && toCallback(onError));
-}
-
 export async function* toAsyncIterable<T>(source: Source<T>): AsyncGenerator<T> {
     const values: T[] = [];
     let next: (() => void) | null = null;
@@ -126,8 +122,7 @@ export async function* toAsyncIterable<T>(source: Source<T>): AsyncGenerator<T> 
 }
 
 export function buffered<T>(source: Source<T>): Source<T> {
-    const iter = toAsyncIterable(source);
-    return asyncIterableSource(iter);
+    return asyncIterableSource(toAsyncIterable(source));
 }
 
 export function map<T, U>(source: Source<T>, fn: (value: T) => U): Source<U> {
@@ -139,5 +134,56 @@ export function map<T, U>(source: Source<T>, fn: (value: T) => U): Source<U> {
 export function filter<T>(source: Source<T>, predicate: (value: T) => boolean): Source<T> {
     return (emit, done, cleanup) => {
         source((value) => predicate(value) && emit(value), done, cleanup);
+    };
+}
+
+export function merge<T>(...sources: Source<T>[]): Source<T> {
+    return (emit, done, cleanup) => {
+        let activeCount = sources.length;
+        let isDone = false;
+
+        if (activeCount === 0) {
+            return done();
+        }
+
+        const onDone: Callback<void> = () => {
+            activeCount--;
+            if (activeCount === 0 && !isDone) {
+                isDone = true;
+                done();
+            }
+        };
+
+        const dispose: Abort = () => {
+            aborts.forEach((abort) => {
+                try {
+                    abort();
+                } catch (_e) {
+                    // Ignore errors during cleanup
+                }
+            });
+            aborts.length = 0;
+        };
+
+        const aborts: Abort[] = [];
+        cleanup(dispose);
+
+        // Shared error handler
+        const onError: Callback<any> = (error) => {
+            if (isDone) return;
+            isDone = true;
+
+            // Clean up all sources
+            dispose();
+
+            // Propagate the error directly to the consumer
+            // This ensures the Promise rejects properly
+            throw error;
+        };
+
+        for (const source of sources) {
+            const abort = consume(source, emit, onDone, onError);
+            aborts.push(abort);
+        }
     };
 }
