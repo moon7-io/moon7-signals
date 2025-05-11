@@ -1,0 +1,17 @@
+ls:
+    src/**:
+        .ts: kebab-case
+        .tsx: kebab-case
+        .d.ts: kebab-case
+
+    test/**:
+        .ts: kebab-case
+        .tsx: kebab-case
+        .test.ts: kebab-case
+        .spec.ts: kebab-case
+
+ignore:
+    - node_modules
+    - dist
+    - .git
+    - coverage

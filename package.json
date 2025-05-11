@@ -1,0 +1,82 @@
+{
+    "name": "@moon7/signals",
+    "author": "Munir Hussin <profoundseven@gmail.com>",
+    "license": "MIT",
+    "version": "0.1.0",
+    "description": "A signal-slot library for TypeScript for event dispatching and handling",
+    "keywords": [
+        "signals",
+        "observer",
+        "events",
+        "reactive",
+        "event-emitter",
+        "typescript",
+        "pubsub",
+        "stream"
+    ],
+    "type": "module",
+    "files": [
+        "dist"
+    ],
+    "main": "./dist/index.umd.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "require": "./dist/index.umd.cjs"
+        }
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/moon7-io/moon7-signals.git"
+    },
+    "homepage": "https://github.com/moon7-io/moon7-signals#readme",
+    "bugs": {
+        "url": "https://github.com/moon7-io/moon7-signals/issues"
+    },
+    "sideEffects": false,
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite build --watch",
+        "clean": "rimraf dist",
+        "prepublishOnly": "pnpm lint:errors && pnpm test && pnpm build",
+        "lint": "pnpm lint:type && pnpm lint:code && pnpm lint:prettier && pnpm lint:files",
+        "lint:errors": "pnpm lint:type && pnpm lint:code:errors && pnpm lint:prettier:errors && pnpm lint:files",
+        "lint:type": "tsc --noEmit",
+        "lint:code": "eslint --ext .ts,.tsx src/ test/",
+        "lint:code:errors": "eslint --ext .ts,.tsx src/ test/ --quiet",
+        "lint:prettier": "prettier --check \"src/**/*\" \"test/**/*\"",
+        "lint:prettier:errors": "prettier --check --log-level error \"src/**/*\" \"test/**/*\"",
+        "lint:files": "ls-lint",
+        "fix": "pnpm fix:code && pnpm fix:prettier",
+        "fix:code": "eslint --ext .ts,.tsx src/ test/ --fix",
+        "fix:prettier": "prettier --write \"src/**/*\" \"test/**/*\"",
+        "test": "vitest run",
+        "test:watch": "vitest watch",
+        "test:coverage": "vitest run --coverage"
+    },
+    "devDependencies": {
+        "@ls-lint/ls-lint": "^2.3.0",
+        "@types/node": "^22.15.3",
+        "@typescript-eslint/eslint-plugin": "^8.31.1",
+        "@typescript-eslint/parser": "^8.31.1",
+        "@vitest/coverage-v8": "^3.1.2",
+        "eslint": "^9.26.0",
+        "eslint-config-prettier": "^10.1.2",
+        "eslint-plugin-import": "^2.31.0",
+        "prettier": "^3.5.3",
+        "rimraf": "^6.0.1",
+        "typescript": "^5.6.2",
+        "vite": "^6.3.4",
+        "vite-plugin-dts": "^4.5.3",
+        "vitest": "^3.1.2"
+    },
+    "dependencies": {},
+    "publishConfig": {
+        "access": "public"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}
