@@ -240,8 +240,9 @@ const signal1 = new Signal<number>();
 const signal2 = new Signal<number>();
 const combinedStream = Stream.of(signalSource(signal1, signal2));
 
-// Create a stream from a Promise (emits once then completes)
-const responseStream = Stream.of(promiseSource(Promise.resolve("hello")));
+// Create a stream from multiple promises
+const delayed = <T>(value: T, ms: number) => new Promise<T>(resolve => setTimeout(() => resolve(value), ms));
+const responseStream = Stream.of(promiseSource(delayed("hello", 100), delayed("world", 200)));
 
 // Create a stream from DOM events
 const button = document.getElementById("button");
@@ -554,11 +555,11 @@ stream.onError.add(error => {
 
 - `signalSource(...signals)` - Creates a source that emits values from one or more signals
 - `streamSource(...streams)` - Creates a source that emits values from one or more streams
+- `promiseSource(...promises)` - Creates a source that emits the resolved values of promises
 - `emitterSource(emitter)(eventName)` - Creates a source that emits values from an event emitter
 - `eventTargetSource(target)(eventName, options)` - Creates a source that emits events from a DOM event target
 - `asyncIterableSource(iterable)` - Creates a source that emits values from an async iterable
 - `throttledIterableSource(iterable, delay)` - Creates a source that emits values from an iterable with a specified delay
-- `promiseSource(promise)` - Creates a source that emits the resolved value of a promise and then completes
 
 ## Contributing
 
