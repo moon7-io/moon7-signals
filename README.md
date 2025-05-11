@@ -54,6 +54,8 @@ A `SignalHub` serves as a centralized registry of typed signals organized by key
 
 ### Signal
 
+A Signal is essentially an event target/dispatcher for one particular event type.
+
 ```typescript
 import { Signal } from "@moon7/signals";
 
@@ -79,15 +81,20 @@ clicked.once(event => {
 
 // Auto-removed after first trigger
 clicked.dispatch({ x: 100, y: 200 });  // logs: "Final: 100,200"
+
+// resolved on the next dispatch
+const pos = await clicked.next();
 ```
 
 ### Source
+
+At first glance, `Source<T>` is similar to an `AsyncGenerator<T>` (`async function*`), though the main benefit is that you can `emit` anywhere in the function body, but you can't `yield` from inner functions.
 
 ```typescript
 import { consume, Source } from "@moon7/signals";
 
 // Create a source that emits values over time
-const numberSource: Source<number> = (emit, done, cleanup) => {
+const numberSource: Source<number> = (emit, done, fail, cleanup) => {
     let counter = 0;
     const interval = setInterval(() => {
         emit(counter++);
@@ -146,7 +153,7 @@ const clientXSource = map(eventTargetSource(dom)("click"), event => event.client
 multiStream.connect(clientXSource);
 ```
 
-> ⚠️ `Stream` does not buffer values. Listeners only receive values emitted after they are added. You can re-order when you add listeners, to properly capture the events.
+> ⚠️ `Stream` does not buffer values and does not handle backpressure. Listeners only receive values emitted after they are added. You can re-order when you add listeners, to properly capture the events.
 
 ```typescript
 // This won't work as expected:
@@ -302,7 +309,7 @@ Sources and Streams support a rich set of functional operations that let you tra
 
 ```typescript
 import { sleep } from "@moon7/async";
-import { Source, map, filter } from "@moon7/signals";
+import { Source, map, filter, merge } from "@moon7/signals";
 
 // define a source
 const mySource: Source<number> = async (emit, done) => {
@@ -348,7 +355,9 @@ sourceStream.pipe(targetStream);
 [1, 2, 3, 4, 5].forEach(n => sourceStream.dispatch(n));
 ```
 
-## Async/Await with Streams
+## Async/Await with Stream/Source
+
+### Basic Example with Stream
 
 ```typescript
 async function processStream() {
@@ -371,22 +380,22 @@ async function processStream() {
 }
 ```
 
-### Websocket Example
+### Websocket Example with Source
 
 ```typescript
-import { Source, Stream } from '@moon7/signals';
+import { Source, toAsyncIterable } from '@moon7/signals';
 import { WebSocket, WebSocketServer } from 'ws';
 import express from 'express';
 import http from 'http';
 
 // Create a source factory function for WebSockets
-const websocketSource = (ws: WebSocket): Source<any> => (emit, done, cleanup) => {
+const websocketSource = (ws: WebSocket): Source<any> => (emit, done, fail, cleanup) => {
     const onMessage = (data: any) => {
         try {
             const message = JSON.parse(data.toString());
             emit(message);
         } catch (error) {
-            emit({ error: 'Failed to parse message', raw: data.toString() });
+            fail(error);
         }
     };
 
@@ -394,9 +403,9 @@ const websocketSource = (ws: WebSocket): Source<any> => (emit, done, cleanup) =>
         done();
     };
 
-    const onError = () => {
-        emit({ error: error.message });
-        done();
+    const onError = (error) => {
+        // note that calling fail() will close the source
+        fail({ error: error.message });
     };
 
     // Set up event handlers
@@ -421,15 +430,15 @@ const wss = new WebSocketServer({ server });
 wss.on('connection', async (ws) => {
     console.log('Client connected');
     
-    // Create a stream from the WebSocket
-    const stream = Stream.of(websocketSource(ws));
+    // Create an async iterable from the WebSocket
+    const iterable = toAsyncIterable(websocketSource(ws));
     
     // Send a welcome message
     ws.send(JSON.stringify({ type: 'welcome', message: 'Connected to server' }));
     
     try {
         // Process messages using async/await
-        for await (const message of stream) {
+        for await (const message of iterable) {
             console.log('Received message:', message);
             
             // Example: Echo back messages with a timestamp
@@ -504,7 +513,7 @@ stream.onError.add(error => {
 - `disconnectAll()` - Disconnects from all sources
 - `isOpen` - Whether the stream is still open
 - `onClose` - Signal triggered when the stream closes
-- `onDone` - Signal triggered when all sources complete
+- `onDone` - Signal triggered when a source completes
 - `onError` - Signal triggered when errors occur
 - `close()` - Closes the stream and cleans up resources
 - `map(fn)` - Creates a new stream by transforming each value
