@@ -9,12 +9,12 @@ import {
     isNodeEventTarget,
 } from "./emitters";
 import { type Remove, Signal } from "./signal";
-import { type Source } from "~/source";
+import { Emit, type Source } from "~/source";
 import { Stream } from "~/stream";
 
 /** Creates a source that emits values from one or more signals */
 export function signalSource<T>(...signals: Signal<T>[]): Source<T> {
-    return (emit, done, cleanup) => {
+    return (emit, done, fail, cleanup) => {
         const removers: Remove[] = signals.map(signal => {
             return signal.add(value => emit(value));
         });
@@ -27,11 +27,34 @@ export function streamSource<T>(...streams: Stream<T>[]): Source<T> {
     return signalSource(...streams);
 }
 
+/** Creates a source that emits the resolved value of a promise and then completes */
+export function promiseSource<T>(...promises: Promise<T>[]): Source<T> {
+    return (emit, done, fail) => {
+        let count = promises.length;
+        let isDone = false;
+        const onResolve: Emit<T> = value => {
+            if (isDone) return;
+            count--;
+            emit(value);
+            if (count === 0) {
+                isDone = true;
+                done();
+            }
+        };
+        const onReject: Emit<any> = error => {
+            if (isDone) return;
+            isDone = true;
+            fail(error);
+        };
+        promises.forEach(promise => promise.then(onResolve, onReject));
+    };
+}
+
 /** Creates a source that emits values from an event emitter */
 export function emitterSource<S>(emitter: Emitter<S>) {
     // structured this way for better type inference
     return <K extends keyof S>(eventName: K): Source<S[K]> => {
-        return (emit, done, cleanup) => {
+        return (emit, done, fail, cleanup) => {
             const listener: EventHandler<S[K]> = value => emit(value);
             if (isEventEmitter(emitter)) {
                 emitter.on(eventName, listener);
@@ -43,8 +66,7 @@ export function emitterSource<S>(emitter: Emitter<S>) {
                 emitter.addEventListener(eventName, listener);
                 cleanup(() => emitter.removeEventListener(eventName, listener));
             } else {
-                // Only throw if none of the emitter types match
-                throw new Error("Unsupported emitter type");
+                fail(new Error("Unsupported emitter type"));
             }
         };
     };
@@ -54,7 +76,7 @@ export function emitterSource<S>(emitter: Emitter<S>) {
 export function eventTargetSource<S>(target: EventTarget<S>) {
     // structured this way for better type inference
     return <K extends keyof S>(eventName: K, options?: AddEventListenerOptions | boolean): Source<S[K]> => {
-        return (emit, done, cleanup) => {
+        return (emit, done, fail, cleanup) => {
             const listener: EventHandler<S[K]> = event => emit(event);
             target.addEventListener(eventName, listener, options);
             cleanup(() => target.removeEventListener(eventName, listener, options));
@@ -64,7 +86,7 @@ export function eventTargetSource<S>(target: EventTarget<S>) {
 
 /** Creates a source that emits values from an async iterable */
 export function asyncIterableSource<T>(iterable: AsyncIterable<T>): Source<T> {
-    return async (emit, done, cleanup) => {
+    return async (emit, done, fail, cleanup) => {
         let cancelled = false;
         cleanup(() => (cancelled = true));
         try {
@@ -72,8 +94,9 @@ export function asyncIterableSource<T>(iterable: AsyncIterable<T>): Source<T> {
                 if (cancelled) break;
                 emit(item);
             }
-        } finally {
             done();
+        } catch (error) {
+            fail(error);
         }
     };
 }
@@ -86,19 +109,5 @@ export function throttledIterableSource<T>(iterable: Iterable<T>, delay: number)
             emit(item);
         }
         done();
-    };
-}
-
-/** Creates a source that emits the resolved value of a promise and then completes */
-export function promiseSource<T>(promise: Promise<T>): Source<T> {
-    return async (emit, done) => {
-        try {
-            emit(await promise);
-            done();
-        } catch (error) {
-            // Properly handle rejected promises by passing the error to onError
-            // We don't call emit here since the promise didn't resolve to a value
-            throw error;
-        }
     };
 }

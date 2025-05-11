@@ -7,7 +7,7 @@ describe("Source", () => {
     test("simplest", async () => {
         const dispose = vi.fn();
 
-        const source: Source<number> = (emit, done, cleanup) => {
+        const source: Source<number> = (emit, done, fail, cleanup) => {
             cleanup(dispose);
             emit(1);
             emit(2);
@@ -43,7 +43,7 @@ describe("Source", () => {
     test("with timeout", async () => {
         const dispose = vi.fn();
 
-        const source: Source<number> = (emit, done, cleanup) => {
+        const source: Source<number> = (emit, done, fail, cleanup) => {
             const timers: NodeJS.Timeout[] = [];
             cleanup(clear);
             timers.push(setTimeout(() => emit(1), 10));
@@ -69,7 +69,7 @@ describe("Source", () => {
     test("with timeout and throws from emit", async () => {
         const dispose = vi.fn();
 
-        const source: Source<number> = (emit, done, cleanup) => {
+        const source: Source<number> = (emit, done, fail, cleanup) => {
             const timers: NodeJS.Timeout[] = [];
             cleanup(clear);
             timers.push(setTimeout(() => emit(1), 10));
@@ -107,7 +107,7 @@ describe("Source", () => {
     test("with timeout and abort", async () => {
         const dispose = vi.fn();
 
-        const source: Source<number> = (emit, done, cleanup) => {
+        const source: Source<number> = (emit, done, fail, cleanup) => {
             const timers: NodeJS.Timeout[] = [];
             cleanup(clear);
             timers.push(setTimeout(() => emit(1), 10));
@@ -140,7 +140,7 @@ describe("Source", () => {
     test("with timeout, map and filter", async () => {
         const dispose = vi.fn();
 
-        const source: Source<number> = (emit, done, cleanup) => {
+        const source: Source<number> = (emit, done, fail, cleanup) => {
             const timers: NodeJS.Timeout[] = [];
             cleanup(clear);
             timers.push(setTimeout(() => emit(1), 10));
@@ -175,7 +175,7 @@ describe("Source", () => {
     test("with async", async () => {
         const dispose = vi.fn();
 
-        const source: Source<number> = async (emit, done, cleanup) => {
+        const source: Source<number> = async (emit, done, fail, cleanup) => {
             cleanup(dispose);
             await sleep(10);
             emit(1);
@@ -209,7 +209,7 @@ describe("Source", () => {
     test("with signals", async () => {
         const dispose = vi.fn();
 
-        const source: Source<number> = (emit, done, cleanup) => {
+        const source: Source<number> = (emit, done, fail, cleanup) => {
             cleanup(dispose);
             emit(1);
             emit(2);
@@ -250,7 +250,7 @@ describe("Source", () => {
     test("with asyncIterable", async () => {
         const dispose = vi.fn();
 
-        const source: Source<number> = (emit, done, cleanup) => {
+        const source: Source<number> = (emit, done, fail, cleanup) => {
             cleanup(dispose);
             emit(1);
             emit(2);
@@ -289,7 +289,7 @@ describe("Source", () => {
         const dispose = vi.fn();
         const extraDispose = vi.fn();
 
-        const source: Source<number> = (emit, done, cleanup) => {
+        const source: Source<number> = (emit, done, fail, cleanup) => {
             cleanup(dispose);
             emit(1);
             done();
@@ -303,35 +303,35 @@ describe("Source", () => {
     });
 
     test("toAsyncIterable with error handling", async () => {
-        // Create a source that throws an error in onError callback
-        const source: Source<number> = (emit, done) => {
+        // Create a source that emits then errors
+        const source: Source<number> = async (emit, done, fail) => {
+            await sleep(10);
             emit(1);
+            await sleep(10);
             emit(2);
-            // Simulate an error without using async code
-            try {
-                throw new Error("Test error");
-            } catch (error) {
-                // We're catching to avoid test framework failures
-                // But the error should propagate through onError
-                done();
-                throw error;
-            }
+            await sleep(10);
+            fail(new Error("Test error"));
         };
 
-        try {
-            const iterable = toAsyncIterable(source);
-            const values: number[] = [];
+        const iterable = toAsyncIterable(source);
+        const values: number[] = [];
 
-            // Should throw when we try to iterate
+        // The correct way to test this is to make sure
+        // the error is propagated when iterating
+        try {
             for await (const value of iterable) {
                 values.push(value);
             }
-
             // Should not reach here
-            expect(true).toBe(false);
-        } catch (error: any) {
-            expect(error.message).toBe("Test error");
+            expect("should not reach here").toBe(false);
+        } catch (err: any) {
+            // Should catch the error
+            expect(err).toBeInstanceOf(Error);
+            expect(err.message).toBe("Test error");
         }
+
+        // Should have collected values before error
+        expect(values).toEqual([1, 2]);
     });
 
     test("toAsyncIterable with multiple values and async consumption", async () => {
@@ -858,7 +858,7 @@ describe("Source", () => {
         const dispose = vi.fn();
 
         // Create a source that emits values with delays
-        const source: Source<number> = (emit, done, cleanup) => {
+        const source: Source<number> = (emit, done, fail, cleanup) => {
             cleanup(dispose);
 
             // Emit some values immediately
@@ -910,21 +910,21 @@ describe("Source", () => {
         const dispose3 = vi.fn();
 
         // Create three different sources to merge
-        const source1: Source<number> = (emit, done, cleanup) => {
+        const source1: Source<number> = (emit, done, fail, cleanup) => {
             cleanup(dispose1);
             emit(1);
             emit(2);
             done();
         };
 
-        const source2: Source<number> = (emit, done, cleanup) => {
+        const source2: Source<number> = (emit, done, fail, cleanup) => {
             cleanup(dispose2);
             emit(3);
             emit(4);
             done();
         };
 
-        const source3: Source<number> = (emit, done, cleanup) => {
+        const source3: Source<number> = (emit, done, fail, cleanup) => {
             cleanup(dispose3);
             emit(5);
             emit(6);
@@ -958,7 +958,7 @@ describe("Source", () => {
         const dispose2 = vi.fn();
 
         // Create sources with different timing
-        const source1: Source<number> = (emit, done, cleanup) => {
+        const source1: Source<number> = (emit, done, fail, cleanup) => {
             const timers: NodeJS.Timeout[] = [];
             cleanup(() => {
                 dispose1();
@@ -970,7 +970,7 @@ describe("Source", () => {
             timers.push(setTimeout(() => done(), 40));
         };
 
-        const source2: Source<number> = (emit, done, cleanup) => {
+        const source2: Source<number> = (emit, done, fail, cleanup) => {
             const timers: NodeJS.Timeout[] = [];
             cleanup(() => {
                 dispose2();
@@ -999,7 +999,7 @@ describe("Source", () => {
         const dispose2 = vi.fn();
 
         // Create a source that throws an error
-        const errorSource: Source<number> = (emit, done, cleanup) => {
+        const errorSource: Source<number> = (emit, done, fail, cleanup) => {
             cleanup(dispose1);
             emit(1);
             // Instead of throwing directly, use onError callback to report the error
@@ -1012,7 +1012,7 @@ describe("Source", () => {
             }
         };
 
-        const normalSource: Source<number> = (emit, done, cleanup) => {
+        const normalSource: Source<number> = (emit, done, fail, cleanup) => {
             cleanup(dispose2);
             emit(2);
             emit(3);
@@ -1035,7 +1035,7 @@ describe("Source", () => {
         const dispose1 = vi.fn();
         const dispose2 = vi.fn();
 
-        const source1: Source<number> = (emit, done, cleanup) => {
+        const source1: Source<number> = (emit, done, fail, cleanup) => {
             const timers: NodeJS.Timeout[] = [];
             cleanup(() => {
                 dispose1();
@@ -1047,7 +1047,7 @@ describe("Source", () => {
             timers.push(setTimeout(() => done(), 50));
         };
 
-        const source2: Source<number> = (emit, done, cleanup) => {
+        const source2: Source<number> = (emit, done, fail, cleanup) => {
             const timers: NodeJS.Timeout[] = [];
             cleanup(() => {
                 dispose2();

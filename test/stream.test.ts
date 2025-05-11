@@ -7,7 +7,7 @@ describe("Stream", () => {
     test("with async", async () => {
         const dispose = vi.fn();
 
-        const source: Source<number> = async (emit, done, cleanup) => {
+        const source: Source<number> = async (emit, done, fail, cleanup) => {
             cleanup(dispose);
             await sleep(10);
             emit(1);
@@ -38,7 +38,7 @@ describe("Stream", () => {
     test("with async and abort", async () => {
         const dispose = vi.fn();
 
-        const source: Source<number> = async (emit, done, cleanup) => {
+        const source: Source<number> = async (emit, done, fail, cleanup) => {
             cleanup(dispose);
             await sleep(10);
             emit(1);

@@ -1,5 +1,5 @@
 import { expect, test, describe, vi, beforeEach, afterEach } from "vitest";
-import { sleep } from "~/async";
+import { sleep, timeout } from "~/async";
 import {
     Signal,
     Stream,
@@ -10,6 +10,7 @@ import {
     eventTargetSource,
     asyncIterableSource,
     throttledIterableSource,
+    consume,
 } from "~/index";
 
 interface SomeEmitter {
@@ -76,29 +77,128 @@ describe("Source functions", () => {
             expect(stream.isOpen).toBe(false);
         });
 
+        test("emits values as each promise resolves", async () => {
+            // Create promises that resolve at different times
+            const promise1 = Promise.resolve(1);
+            const promise2 = new Promise<number>(resolve => setTimeout(() => resolve(2), 20));
+            const promise3 = new Promise<number>(resolve => setTimeout(() => resolve(3), 10));
+
+            const stream = Stream.of(promiseSource(promise1, promise2, promise3));
+            const receivedValues: number[] = [];
+
+            // Collect values as they're emitted
+            stream.add(value => receivedValues.push(value));
+
+            // Wait for all promises to resolve
+            await new Promise(resolve => setTimeout(resolve, 30));
+
+            // Values should be emitted in order of resolution, not creation
+            expect(receivedValues).toContain(1);
+            expect(receivedValues).toContain(2);
+            expect(receivedValues).toContain(3);
+            expect(receivedValues.length).toBe(3);
+
+            // Check that 1 comes first (since it resolves immediately)
+            expect(receivedValues[0]).toBe(1);
+            // Check that 3 comes before 2 (since it resolves after 10ms vs 20ms)
+            expect(receivedValues.indexOf(3)).toBeLessThan(receivedValues.indexOf(2));
+
+            // Stream should be closed after all promises resolve
+            expect(stream.isOpen).toBe(false);
+        });
+
+        test("completes only after all promises have resolved", async () => {
+            // Create promises with different resolution times
+            const promise1 = Promise.resolve(10);
+            const promise2 = new Promise<number>(resolve => setTimeout(() => resolve(20), 15));
+
+            const stream = Stream.of(promiseSource(promise1, promise2));
+
+            // First value should be available immediately
+            const firstValue = await stream.next();
+            expect(firstValue).toBe(10);
+
+            // Stream should still be open after first promise resolves
+            expect(stream.isOpen).toBe(true);
+
+            // Second value should be available after waiting
+            const secondValue = await stream.next();
+            expect(secondValue).toBe(20);
+
+            // Give time for completion
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            // Stream should be closed after all promises resolve
+            expect(stream.isOpen).toBe(false);
+        });
+
         test("handles rejected promises by throwing the error", async () => {
-            const error = new Error("Test error");
-            const promise = Promise.reject(error);
+            // Create a delayed rejected promise
+            const delayedRejection = timeout<number>(10);
 
-            // Create the source function but don't connect it to a Stream yet
-            const source = promiseSource(promise);
+            // Track received values and errors
+            const values: number[] = [];
+            let caughtError: unknown = null;
 
-            // Set up mock functions
-            const emit = vi.fn();
-            const done = vi.fn();
-            const cleanup = vi.fn();
+            // Use consume with proper error handling - the way a developer would use it
+            consume<number>(
+                promiseSource(delayedRejection),
+                value => values.push(value),
+                () => {}, // done callback
+                err => {
+                    caughtError = err;
+                } // error callback
+            );
 
-            // Call the source directly and catch the error
-            try {
-                await source(emit, done, cleanup);
-            } catch (e) {
-                // Verify it's the original error
-                expect(e).toBe(error);
-            }
+            // Wait for error to propagate
+            await sleep(20);
 
-            // Verify emit and done were not called
-            expect(emit).not.toHaveBeenCalled();
-            expect(done).not.toHaveBeenCalled();
+            // The error should have been caught by the error handler
+            expect(caughtError).toBeInstanceOf(Error);
+            // Type assertion needed for accessing message property on unknown type
+            expect((caughtError as Error).message).toBe("timeout");
+
+            // No values should have been emitted
+            expect(values).toEqual([]);
+        });
+
+        test("stops emitting after the first rejected promise", async () => {
+            // Create multiple promises with the middle one rejecting
+            const promise1: Promise<number> = Promise.resolve(100);
+            const promise2: Promise<number> = timeout(10);
+            const promise3: Promise<number> = new Promise<number>(resolve => setTimeout(() => resolve(300), 20));
+
+            // Track received values and errors
+            const receivedValues: number[] = [];
+            let caughtError: unknown = null;
+
+            // Use consume with appropriate callbacks - the way a developer would use it
+            consume<number>(
+                promiseSource(promise1, promise2, promise3),
+                value => receivedValues.push(value),
+                () => {
+                    /* done callback */
+                },
+                err => {
+                    caughtError = err;
+                } // error callback
+            );
+
+            // Wait for the first promise to resolve
+            await sleep(5);
+
+            // First value should be emitted
+            expect(receivedValues).toEqual([100]);
+
+            // Wait for the second promise to reject and third to potentially resolve
+            await sleep(30);
+
+            // Error should have been caught
+            expect(caughtError).toBeInstanceOf(Error);
+            expect((caughtError as Error).message).toBe("timeout");
+
+            // Only the first value should have been emitted before the error
+            expect(receivedValues).toEqual([100]);
         });
     });
 
@@ -212,16 +312,19 @@ describe("Source functions", () => {
                 someRandomFunction: () => {},
             };
 
-            // Test the emitterSource function directly, not wrapped in Stream.of
-            expect(() => {
-                // Create the source
-                const source = emitterSource<SomeEmitter>(invalidEmitter)("data");
-                // Call the source function to trigger the error
-                const emit = () => {};
-                const done = () => {};
-                const cleanup = () => {};
-                source(emit, done, cleanup);
-            }).toThrow("Unsupported emitter type");
+            // Test that the emitterSource function calls fail with the appropriate error
+            const source = emitterSource<SomeEmitter>(invalidEmitter)("data");
+            const emit = vi.fn();
+            const done = vi.fn();
+            const fail = vi.fn();
+            const cleanup = vi.fn();
+
+            // Execute the source
+            source(emit, done, fail, cleanup);
+
+            // Verify fail was called with the correct error
+            expect(fail).toHaveBeenCalledWith(expect.any(Error));
+            expect(fail.mock.calls[0][0].message).toBe("Unsupported emitter type");
         });
     });
 
@@ -321,6 +424,41 @@ describe("Source functions", () => {
 
             // Check that the latest value is still 4
             expect(latest).toBe(4);
+        });
+
+        test("handles errors from async iterables", async () => {
+            // Create an async generator that throws an error
+            async function* errorGenerator() {
+                yield 1;
+                yield 2;
+                throw new Error("Test error from async iterable");
+                // This won't be reached
+                yield 3;
+            }
+
+            // Track received values and errors
+            const values: number[] = [];
+            let caughtError: unknown = null;
+
+            // Use consume to handle the source
+            consume(
+                asyncIterableSource(errorGenerator()),
+                value => values.push(value),
+                () => {}, // done callback
+                err => {
+                    caughtError = err;
+                } // error callback
+            );
+
+            // Wait for the generator to yield values and then throw
+            await sleep(20);
+
+            // We should receive values before the error
+            expect(values).toEqual([1, 2]);
+
+            // The error should be caught and passed to the fail callback
+            expect(caughtError).toBeInstanceOf(Error);
+            expect((caughtError as Error).message).toBe("Test error from async iterable");
         });
     });
 

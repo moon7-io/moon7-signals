@@ -4,7 +4,8 @@ import { asyncIterableSource } from "~/factories";
 export type Callback<T> = (value: T) => void;
 export type Emit<T> = (value: T) => void;
 export type Done = () => void;
-export type Source<T> = (emit: Emit<T>, done: Done, cleanup: Cleanup) => void;
+export type Fail = (error: any) => void;
+export type Source<T> = (emit: Emit<T>, done: Done, fail: Fail, cleanup: Cleanup) => void;
 export type Dispose = () => void;
 export type Init = () => Dispose;
 export type Cleanup = (dispose: Dispose) => void;
@@ -25,9 +26,7 @@ export function consume<T>(
         try {
             onEmit?.(value);
         } catch (error) {
-            isDone = true;
-            dispose();
-            onError?.(error);
+            fail(error);
         }
     };
 
@@ -36,6 +35,13 @@ export function consume<T>(
         isDone = true;
         dispose();
         onDone?.();
+    };
+
+    const fail: Fail = error => {
+        if (isDone) return;
+        isDone = true;
+        dispose();
+        onError?.(error);
     };
 
     // you can call cleanup multiple times -- all previous cleanup functions will be called
@@ -58,9 +64,9 @@ export function consume<T>(
     };
 
     try {
-        source(emit, done, cleanup);
+        source(emit, done, fail, cleanup);
     } catch (error) {
-        onError?.(error);
+        fail(error);
     }
 
     return abort;
@@ -84,6 +90,7 @@ export function toCallback<T>(signal: Signal<T>): Callback<T> {
 
 export async function* toAsyncIterable<T>(source: Source<T>): AsyncGenerator<T> {
     const values: T[] = [];
+    const errors: any[] = [];
     let next: (() => void) | null = null;
     let isDone = false;
 
@@ -105,7 +112,12 @@ export async function* toAsyncIterable<T>(source: Source<T>): AsyncGenerator<T> 
     };
 
     const onError: Callback<any> = error => {
-        throw error;
+        if (isDone) return;
+        isDone = true;
+        errors.push(error);
+        if (next) {
+            next();
+        }
     };
 
     consume(source, onEmit, onDone, onError);
@@ -113,6 +125,11 @@ export async function* toAsyncIterable<T>(source: Source<T>): AsyncGenerator<T> 
     while (!isDone || values.length > 0) {
         if (values.length === 0 && !isDone) {
             await new Promise<void>(resolve => (next = resolve));
+        }
+
+        if (errors.length > 0) {
+            const error = errors.shift()!;
+            throw error;
         }
 
         if (values.length > 0) {
@@ -126,19 +143,19 @@ export function buffered<T>(source: Source<T>): Source<T> {
 }
 
 export function map<T, U>(source: Source<T>, fn: (value: T) => U): Source<U> {
-    return (emit, done, cleanup) => {
-        source(value => emit(fn(value)), done, cleanup);
+    return (emit, done, fail, cleanup) => {
+        source(value => emit(fn(value)), done, fail, cleanup);
     };
 }
 
 export function filter<T>(source: Source<T>, predicate: (value: T) => boolean): Source<T> {
-    return (emit, done, cleanup) => {
-        source(value => predicate(value) && emit(value), done, cleanup);
+    return (emit, done, fail, cleanup) => {
+        source(value => predicate(value) && emit(value), done, fail, cleanup);
     };
 }
 
 export function merge<T>(...sources: Source<T>[]): Source<T> {
-    return (emit, done, cleanup) => {
+    return (emit, done, fail, cleanup) => {
         let activeCount = sources.length;
         let isDone = false;
 
@@ -155,13 +172,7 @@ export function merge<T>(...sources: Source<T>[]): Source<T> {
         };
 
         const dispose: Abort = () => {
-            aborts.forEach(abort => {
-                try {
-                    abort();
-                } catch (_e) {
-                    // Ignore errors during cleanup
-                }
-            });
+            aborts.forEach(abort => abort());
             aborts.length = 0;
         };
 
@@ -172,13 +183,8 @@ export function merge<T>(...sources: Source<T>[]): Source<T> {
         const onError: Callback<any> = error => {
             if (isDone) return;
             isDone = true;
-
-            // Clean up all sources
             dispose();
-
-            // Propagate the error directly to the consumer
-            // This ensures the Promise rejects properly
-            throw error;
+            fail(error);
         };
 
         for (const source of sources) {
