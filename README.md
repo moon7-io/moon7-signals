@@ -1,17 +1,17 @@
-# @moon7/signals
+# 🌙 @moon7/signals
 
 A lightweight, type-safe reactive programming library for TypeScript.
 
 [![npm version](https://img.shields.io/npm/v/@moon7/signals.svg)](https://www.npmjs.com/package/@moon7/signals)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Background
+## 🧠 Background
 
 The [signal-slot pattern](https://en.wikipedia.org/wiki/Signals_and_slots) provides a type-safe event communication system that offers an alternative to JavaScript's EventTarget and EventEmitter patterns with better type safety, cleaner APIs, and functional composition capabilities.
 
 This library implements this pattern with modern TypeScript, adding streaming capabilities inspired by reactive programming.
 
-## Features
+## ✨ Features
 
 - 🍃 **Lightweight**: Small footprint with zero dependencies
 - 🔍 **Type-Safe**: Full TypeScript support with proper type inference
@@ -19,7 +19,7 @@ This library implements this pattern with modern TypeScript, adding streaming ca
 - 🔄 **Reactive**: Functional reactive programming patterns
 - 🔌 **Interoperable**: Works with DOM events, Node.js EventEmitter, Promises, and iterables
 
-## Installation
+## 📦 Installation
 
 ```bash
 # npm
@@ -32,27 +32,27 @@ pnpm add @moon7/signals
 yarn add @moon7/signals
 ```
 
-## Concepts
+## 🧩 Concepts
 
-### Signal
+### 📣 Signal
 
 A `Signal` is a typed event emitter that implements the [signal-slot pattern](https://en.wikipedia.org/wiki/Signals_and_slots), providing a type-safe alternative to JavaScript's EventTarget/EventEmitter with cleaner syntax and better TypeScript integration.
 
-### Source
+### 🌊 Source
 
 A `Source` is a functional abstraction that produces values over time using callbacks instead of generators. Its functional design allows you to write composable higher-order functions that transform sources, creating powerful data flow pipelines.
 
-### Stream
+### 📡 Stream
 
 A `Stream` extends `Signal` and connects to one or more `Source` functions, combining event handling with reactive data flows. It provides lifecycle management and functional operators like map, filter, and take.
 
-### SignalHub
+### 🔄 SignalHub
 
 A `SignalHub` serves as a centralized registry of typed signals organized by keys, making it easy to manage multiple event channels with full type safety across your application.
 
-## Basic Usage
+## 🚀 Basic Usage
 
-### Signal
+### 📣 Signal
 
 A Signal is essentially an event target/dispatcher for one particular event type.
 
@@ -86,7 +86,7 @@ clicked.dispatch({ x: 100, y: 200 });  // logs: "Final: 100,200"
 const pos = await clicked.next();
 ```
 
-### Source
+### 🌊 Source
 
 At first glance, `Source<T>` is similar to an `AsyncGenerator<T>` (`async function*`), though the main benefit is that you can `emit` anywhere in the function body, but you can't `yield` from inner functions.
 
@@ -119,7 +119,7 @@ const abort = consume(
 // abort();
 ```
 
-### Stream
+### 📡 Stream
 
 ```typescript
 import { Stream, eventTargetSource, throttledIterableSource, map } from "@moon7/signals";
@@ -185,7 +185,7 @@ stream.connect((emit, done) => {
 });
 ```
 
-### SignalHub
+### 🔄 SignalHub
 
 ```typescript
 import { SignalHub } from "@moon7/signals";
@@ -220,7 +220,7 @@ hub.dispatch("notify", { message: "Hello world", type: "info" });
 hub.dispatch("ready");  // No payload needed for void events
 ```
 
-## Source Factory Functions
+## 🔧 Source Factory Functions
 
 The library provides a number of source factory functions for convenience, allowing you to create streams from various data sources, such as from DOM EventTargets, or other EventEmitters.
 
@@ -302,11 +302,11 @@ const onDone: Done = () => console.log("completed");
 const abort = consume(mySource, toCallback(signal), onDone);
 ```
 
-## Source and Stream Operations
+## 🔄 Source and Stream Operations
 
 Sources and Streams support a rich set of functional operations that let you transform, filter, and combine data.
 
-### Source Operations
+### 🌊 Source Operations
 
 ```typescript
 import { sleep } from "@moon7/async";
@@ -331,7 +331,7 @@ const filteredSource = filter(mySource, value => value % 2 === 0);
 const mergedSource = merge(mappedSource, mySource, filteredSource);
 ```
 
-### Stream Operations
+### 📡 Stream Operations
 
 ```typescript
 // Source stream of numbers
@@ -356,9 +356,9 @@ sourceStream.pipe(targetStream);
 [1, 2, 3, 4, 5].forEach(n => sourceStream.dispatch(n));
 ```
 
-## Async/Await with Stream/Source
+## ⏳ Async/Await with Stream/Source
 
-### Basic Example with Stream
+### 🔍 Basic Example with Stream
 
 ```typescript
 async function processStream() {
@@ -381,7 +381,7 @@ async function processStream() {
 }
 ```
 
-### Websocket Example with Source
+### 🌐 Websocket Example with Source
 
 ```typescript
 import { Source, toAsyncIterable } from '@moon7/signals';
@@ -461,7 +461,7 @@ wss.on('connection', async (ws) => {
 });
 ```
 
-## Error Handling
+## ⚠️ Error Handling
 
 ```typescript
 const stream = Stream.of<number>((emit, done) => {
@@ -480,99 +480,95 @@ stream.onError.add(error => {
 });
 ```
 
-## API Reference
+## 📚 API Reference
 
-### Signal
+| Export                                          | Description                                                                |
+| ----------------------------------------------- | -------------------------------------------------------------------------- |
+| **📣 Signal**                                    |                                                                            |
+| `add(listener)`                                 | Registers a listener, returns a function to remove it                      |
+| `remove(listener)`                              | Removes a previously registered listener                                   |
+| `once(listener)`                                | Adds a one-time listener that auto-removes after triggering                |
+| `limit(listener, count)`                        | Adds a listener with a limit on how many times it will trigger             |
+| `dispatch(value)`                               | Sends a value to all registered listeners                                  |
+| `next()`                                        | Returns a promise that resolves with the next dispatched value             |
+| `clear()`                                       | Removes all registered listeners                                           |
+| `has(listener)`                                 | Checks if a specific listener is registered                                |
+| `size`                                          | Number of registered listeners                                             |
+| **🌊 Source Functions**                          |                                                                            |
+| `consume(source, onEmit, onDone, onError)`      | Consumes a source, calling the provided callbacks                          |
+| `collect(source)`                               | Collects all values from a source into an array Promise                    |
+| `map(source, fn)`                               | Transforms values from a source using a mapping function                   |
+| `filter(source, predicate)`                     | Filters values from a source based on a predicate                          |
+| `merge(...sources)`                             | Merge multiple sources into a single source                                |
+| `buffered(source)`                              | Creates a buffered version of a source that stores emitted values          |
+| `toAsyncIterable(source)`                       | Converts a source to an async iterable                                     |
+| `toCallback(signal)`                            | Converts a signal to a callback function                                   |
+| **📡 Stream**                                    |                                                                            |
+| `new Stream()`                                  | Creates a new empty stream                                                 |
+| `Stream.of(source)`                             | Static factory method to create a new stream with a source function        |
+| `connect(source)`                               | Connects this stream to a source                                           |
+| `disconnect(source)`                            | Disconnects this stream from a source                                      |
+| `disconnectAll()`                               | Disconnects from all sources                                               |
+| `isOpen`                                        | Whether the stream is still open                                           |
+| `onClose`                                       | Signal triggered when the stream closes                                    |
+| `onDone`                                        | Signal triggered when a source completes                                   |
+| `onError`                                       | Signal triggered when errors occur                                         |
+| `close()`                                       | Closes the stream and cleans up resources                                  |
+| `map(fn)`                                       | Creates a new stream by transforming each value                            |
+| `filter(predicate)`                             | Creates a new stream with only values that pass a test                     |
+| `take(count)`                                   | Creates a stream with only the first n values                              |
+| `skip(count)`                                   | Creates a stream that skips the first n values                             |
+| `pipe(target)`                                  | Pipes values to another stream                                             |
+| `next()`                                        | Returns a promise that resolves with the next value                        |
+| `iterator()`                                    | Creates an async iterator for the stream                                   |
+| `[Symbol.asyncIterator]()`                      | Supports for-await-of loops                                                |
+| **🔄 SignalHub**                                 |                                                                            |
+| `signal(key)`                                   | Gets a signal for a specific key                                           |
+| `add(key, listener)`                            | Adds a listener for a specific key                                         |
+| `remove(key, listener)`                         | Removes a listener for a specific key                                      |
+| `on(key, listener)`                             | Alias for `add()` - adds a listener for a specific key                     |
+| `off(key, listener)`                            | Alias for `remove()` - removes a listener for a specific key               |
+| `once(key, listener)`                           | Adds a one-time listener for a specific key                                |
+| `limit(key, listener, count)`                   | Adds a listener with a maximum trigger count                               |
+| `next(key)`                                     | Returns a promise that resolves with the next value for a key              |
+| `has(key, listener)`                            | Checks if a specific listener is registered for a key                      |
+| `size(key)`                                     | Gets the number of listeners for a specific key                            |
+| `dispatch(key, value)`                          | Dispatches a value for a specific key                                      |
+| `keys()`                                        | Returns all registered keys                                                |
+| `hasKey(key)`                                   | Checks if a key has been accessed                                          |
+| `clear(key)`                                    | Clears all listeners for a specific key                                    |
+| `clearAll()`                                    | Clears all listeners for all keys                                          |
+| `delete(key)`                                   | Deletes a key and its associated signal                                    |
+| **🔍 Type Guards**                               |                                                                            |
+| `isEventTarget(emitter)`                        | Checks if an object is a DOM EventTarget                                   |
+| `isEventEmitter(emitter)`                       | Checks if an object is a Node.js-style EventEmitter                        |
+| `isNodeEventTarget(emitter)`                    | Checks if an object is a Node.js-style EventTarget                         |
+| **🏭 Source Factory Functions**                  |                                                                            |
+| `signalSource(...signals)`                      | Creates a source that emits values from one or more signals                |
+| `streamSource(...streams)`                      | Creates a source that emits values from one or more streams                |
+| `promiseSource(...promises)`                    | Creates a source that emits the resolved values of promises                |
+| `emitterSource(emitter)(eventName)`             | Creates a source that emits values from an event emitter                   |
+| `eventTargetSource(target)(eventName, options)` | Creates a source that emits events from a DOM event target                 |
+| `asyncIterableSource(iterable)`                 | Creates a source that emits values from an async iterable                  |
+| `throttledIterableSource(iterable, delay)`      | Creates a source that emits values from an iterable with a specified delay |
 
-- `add(listener)` - Registers a listener, returns a function to remove it
-- `remove(listener)` - Removes a previously registered listener
-- `once(listener)` - Adds a one-time listener that auto-removes after triggering
-- `limit(listener, count)` - Adds a listener with a limit on how many times it will trigger
-- `dispatch(value)` - Sends a value to all registered listeners
-- `next()` - Returns a promise that resolves with the next dispatched value
-- `clear()` - Removes all registered listeners
-- `has(listener)` - Checks if a specific listener is registered
-- `size` - Number of registered listeners
+## 🔗 Related Libraries
 
-### Source Functions
+| Library                                                     | Description                                                                     | npm                                                                                                             |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| [@moon7/async](https://github.com/moon7-io/moon7-async)     | Asynchronous utilities for managing promises, concurrent operations, and timing | [![npm version](https://img.shields.io/npm/v/@moon7/async.svg)](https://www.npmjs.com/package/@moon7/async)     |
+| [@moon7/inspect](https://github.com/moon7-io/moon7-inspect) | Runtime type checking with powerful, composable type inspectors                 | [![npm version](https://img.shields.io/npm/v/@moon7/inspect.svg)](https://www.npmjs.com/package/@moon7/inspect) |
+| [@moon7/result](https://github.com/moon7-io/moon7-result)   | Functional error handling with Result and Maybe types                           | [![npm version](https://img.shields.io/npm/v/@moon7/result.svg)](https://www.npmjs.com/package/@moon7/result)   |
+| [@moon7/signals](https://github.com/moon7-io/moon7-signals) | Reactive programming with Signals, Sources, and Streams                         | [![npm version](https://img.shields.io/npm/v/@moon7/signals.svg)](https://www.npmjs.com/package/@moon7/signals) |
 
-- `consume(source, onEmit, onDone, onError)` - Consumes a source, calling the provided callbacks
-- `collect(source)` - Collects all values from a source into an array Promise
-- `map(source, fn)` - Transforms values from a source using a mapping function
-- `filter(source, predicate)` - Filters values from a source based on a predicate
-- `merge(...sources)` - Merge multiple sources into a single source
-- `buffered(source)` - Creates a buffered version of a source that stores emitted values
-- `toAsyncIterable(source)` - Converts a source to an async iterable
-- `toCallback(signal)` - Converts a signal to a callback function
-
-### Stream
-
-- `new Stream()` - Creates a new empty stream
-- `Stream.of(source)` - Static factory method to create a new stream with a source function
-- `connect(source)` - Connects this stream to a source
-- `disconnect(source)` - Disconnects this stream from a source
-- `disconnectAll()` - Disconnects from all sources
-- `isOpen` - Whether the stream is still open
-- `onClose` - Signal triggered when the stream closes
-- `onDone` - Signal triggered when a source completes
-- `onError` - Signal triggered when errors occur
-- `close()` - Closes the stream and cleans up resources
-- `map(fn)` - Creates a new stream by transforming each value
-- `filter(predicate)` - Creates a new stream with only values that pass a test
-- `take(count)` - Creates a stream with only the first n values
-- `skip(count)` - Creates a stream that skips the first n values
-- `pipe(target)` - Pipes values to another stream
-- `next()` - Returns a promise that resolves with the next value
-- `iterator()` - Creates an async iterator for the stream
-- `[Symbol.asyncIterator]()` - Supports for-await-of loops
-
-### SignalHub
-
-- `signal(key)` - Gets a signal for a specific key
-- `add(key, listener)` - Adds a listener for a specific key
-- `remove(key, listener)` - Removes a listener for a specific key
-- `on(key, listener)` - Alias for `add()` - adds a listener for a specific key
-- `off(key, listener)` - Alias for `remove()` - removes a listener for a specific key
-- `once(key, listener)` - Adds a one-time listener for a specific key
-- `limit(key, listener, count)` - Adds a listener with a maximum trigger count
-- `next(key)` - Returns a promise that resolves with the next value for a key
-- `has(key, listener)` - Checks if a specific listener is registered for a key
-- `size(key)` - Gets the number of listeners for a specific key
-- `dispatch(key, value)` - Dispatches a value for a specific key
-- `keys()` - Returns all registered keys
-- `hasKey(key)` - Checks if a key has been accessed
-- `clear(key)` - Clears all listeners for a specific key
-- `clearAll()` - Clears all listeners for all keys
-- `delete(key)` - Deletes a key and its associated signal
-
-### Type Guards
-
-- `isEventTarget(emitter)` - Checks if an object is a DOM EventTarget
-- `isEventEmitter(emitter)` - Checks if an object is a Node.js-style EventEmitter
-- `isNodeEventTarget(emitter)` - Checks if an object is a Node.js-style EventTarget
-
-### Source Factory Functions
-
-- `signalSource(...signals)` - Creates a source that emits values from one or more signals
-- `streamSource(...streams)` - Creates a source that emits values from one or more streams
-- `promiseSource(...promises)` - Creates a source that emits the resolved values of promises
-- `emitterSource(emitter)(eventName)` - Creates a source that emits values from an event emitter
-- `eventTargetSource(target)(eventName, options)` - Creates a source that emits events from a DOM event target
-- `asyncIterableSource(iterable)` - Creates a source that emits values from an async iterable
-- `throttledIterableSource(iterable, delay)` - Creates a source that emits values from an iterable with a specified delay
-
-## Contributing
+## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Related Libraries
+## 📝 License
 
-The @moon7 ecosystem includes several complementary TypeScript libraries:
+This project is released under the MIT License. See the [LICENSE](https://github.com/moon7-io/moon7-signals/blob/main/LICENSE) file for details.
 
-- [@moon7/async](https://github.com/moon7-io/moon7-async) - Utilities for asynchronous programming
-- [@moon7/inspect](https://github.com/moon7-io/moon7-inspect) - Runtime type inspection and reflection
-- [@moon7/result](https://github.com/moon7-io/moon7-result) - A Result monad for error handling
+## 🌟 Acknowledgements
 
-## License
-
-MIT © [Munir Hussin](https://github.com/profound7)
+Created and maintained by [Munir Hussin](https://github.com/profound7).
