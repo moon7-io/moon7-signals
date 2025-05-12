@@ -482,18 +482,18 @@ stream.onError.add(error => {
 
 ## 📚 API Reference
 
-| Export                                          | Description                                                                |
+| API                                             | Description                                                                |
 | ----------------------------------------------- | -------------------------------------------------------------------------- |
-| **📣 Signal**                                    |                                                                            |
-| `add(listener)`                                 | Registers a listener, returns a function to remove it                      |
-| `remove(listener)`                              | Removes a previously registered listener                                   |
-| `once(listener)`                                | Adds a one-time listener that auto-removes after triggering                |
-| `limit(listener, count)`                        | Adds a listener with a limit on how many times it will trigger             |
-| `dispatch(value)`                               | Sends a value to all registered listeners                                  |
-| `next()`                                        | Returns a promise that resolves with the next dispatched value             |
-| `clear()`                                       | Removes all registered listeners                                           |
-| `has(listener)`                                 | Checks if a specific listener is registered                                |
-| `size`                                          | Number of registered listeners                                             |
+| **📣 Signal** class                              |                                                                            |
+| `.add(listener)`                                | Registers a listener, returns a function to remove it                      |
+| `.remove(listener)`                             | Removes a previously registered listener                                   |
+| `.once(listener)`                               | Adds a one-time listener that auto-removes after triggering                |
+| `.limit(listener, count)`                       | Adds a listener with a limit on how many times it will trigger             |
+| `.dispatch(value)`                              | Sends a value to all registered listeners                                  |
+| `.next()`                                       | Returns a promise that resolves with the next dispatched value             |
+| `.clear()`                                      | Removes all registered listeners                                           |
+| `.has(listener)`                                | Checks if a specific listener is registered                                |
+| `.size`                                         | Number of registered listeners                                             |
 | **🌊 Source Functions**                          |                                                                            |
 | `consume(source, onEmit, onDone, onError)`      | Consumes a source, calling the provided callbacks                          |
 | `collect(source)`                               | Collects all values from a source into an array Promise                    |
@@ -503,42 +503,42 @@ stream.onError.add(error => {
 | `buffered(source)`                              | Creates a buffered version of a source that stores emitted values          |
 | `toAsyncIterable(source)`                       | Converts a source to an async iterable                                     |
 | `toCallback(signal)`                            | Converts a signal to a callback function                                   |
-| **📡 Stream**                                    |                                                                            |
+| **📡 Stream** class extends Signal               |                                                                            |
 | `new Stream()`                                  | Creates a new empty stream                                                 |
 | `Stream.of(source)`                             | Static factory method to create a new stream with a source function        |
-| `connect(source)`                               | Connects this stream to a source                                           |
-| `disconnect(source)`                            | Disconnects this stream from a source                                      |
-| `disconnectAll()`                               | Disconnects from all sources                                               |
-| `isOpen`                                        | Whether the stream is still open                                           |
-| `onClose`                                       | Signal triggered when the stream closes                                    |
-| `onDone`                                        | Signal triggered when a source completes                                   |
-| `onError`                                       | Signal triggered when errors occur                                         |
-| `close()`                                       | Closes the stream and cleans up resources                                  |
-| `map(fn)`                                       | Creates a new stream by transforming each value                            |
-| `filter(predicate)`                             | Creates a new stream with only values that pass a test                     |
-| `take(count)`                                   | Creates a stream with only the first n values                              |
-| `skip(count)`                                   | Creates a stream that skips the first n values                             |
-| `pipe(target)`                                  | Pipes values to another stream                                             |
-| `next()`                                        | Returns a promise that resolves with the next value                        |
-| `iterator()`                                    | Creates an async iterator for the stream                                   |
+| `.connect(source)`                              | Connects this stream to a source                                           |
+| `.disconnect(source)`                           | Disconnects this stream from a source                                      |
+| `.disconnectAll()`                              | Disconnects from all sources                                               |
+| `.isOpen`                                       | Whether the stream is still open                                           |
+| `.onClose`                                      | Signal triggered when the stream closes                                    |
+| `.onDone`                                       | Signal triggered when a source completes                                   |
+| `.onError`                                      | Signal triggered when errors occur                                         |
+| `.close()`                                      | Closes the stream and cleans up resources                                  |
+| `.map(fn)`                                      | Creates a new stream by transforming each value                            |
+| `.filter(predicate)`                            | Creates a new stream with only values that pass a test                     |
+| `.take(count)`                                  | Creates a stream with only the first n values                              |
+| `.skip(count)`                                  | Creates a stream that skips the first n values                             |
+| `.pipe(target)`                                 | Pipes values to another stream                                             |
+| `.next()`                                       | Returns a promise that resolves with the next value                        |
+| `.iterator()`                                   | Creates an async iterator for the stream                                   |
 | `[Symbol.asyncIterator]()`                      | Supports for-await-of loops                                                |
-| **🔄 SignalHub**                                 |                                                                            |
-| `signal(key)`                                   | Gets a signal for a specific key                                           |
-| `add(key, listener)`                            | Adds a listener for a specific key                                         |
-| `remove(key, listener)`                         | Removes a listener for a specific key                                      |
-| `on(key, listener)`                             | Alias for `add()` - adds a listener for a specific key                     |
-| `off(key, listener)`                            | Alias for `remove()` - removes a listener for a specific key               |
-| `once(key, listener)`                           | Adds a one-time listener for a specific key                                |
-| `limit(key, listener, count)`                   | Adds a listener with a maximum trigger count                               |
-| `next(key)`                                     | Returns a promise that resolves with the next value for a key              |
-| `has(key, listener)`                            | Checks if a specific listener is registered for a key                      |
-| `size(key)`                                     | Gets the number of listeners for a specific key                            |
-| `dispatch(key, value)`                          | Dispatches a value for a specific key                                      |
-| `keys()`                                        | Returns all registered keys                                                |
-| `hasKey(key)`                                   | Checks if a key has been accessed                                          |
-| `clear(key)`                                    | Clears all listeners for a specific key                                    |
-| `clearAll()`                                    | Clears all listeners for all keys                                          |
-| `delete(key)`                                   | Deletes a key and its associated signal                                    |
+| **🔄 SignalHub** class                           |                                                                            |
+| `.signal(key)`                                  | Gets a signal for a specific key                                           |
+| `.add(key, listener)`                           | Adds a listener for a specific key                                         |
+| `.remove(key, listener)`                        | Removes a listener for a specific key                                      |
+| `.on(key, listener)`                            | Alias for `add()` - adds a listener for a specific key                     |
+| `.off(key, listener)`                           | Alias for `remove()` - removes a listener for a specific key               |
+| `.once(key, listener)`                          | Adds a one-time listener for a specific key                                |
+| `.limit(key, listener, count)`                  | Adds a listener with a maximum trigger count                               |
+| `.next(key)`                                    | Returns a promise that resolves with the next value for a key              |
+| `.has(key, listener)`                           | Checks if a specific listener is registered for a key                      |
+| `.size(key)`                                    | Gets the number of listeners for a specific key                            |
+| `.dispatch(key, value)`                         | Dispatches a value for a specific key                                      |
+| `.keys()`                                       | Returns all registered keys                                                |
+| `.hasKey(key)`                                  | Checks if a key has been accessed                                          |
+| `.clear(key)`                                   | Clears all listeners for a specific key                                    |
+| `.clearAll()`                                   | Clears all listeners for all keys                                          |
+| `.delete(key)`                                  | Deletes a key and its associated signal                                    |
 | **🔍 Type Guards**                               |                                                                            |
 | `isEventTarget(emitter)`                        | Checks if an object is a DOM EventTarget                                   |
 | `isEventEmitter(emitter)`                       | Checks if an object is a Node.js-style EventEmitter                        |
