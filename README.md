@@ -575,4 +575,4 @@ The @moon7 ecosystem includes several complementary TypeScript libraries:
 
 ## License
 
-MIT © [Munir Hussin](https://github.com/moon7-io)
+MIT © [Munir Hussin](https://github.com/profound7)
